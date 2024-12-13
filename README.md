@@ -15,15 +15,16 @@ The project is structured for clarity, scalability, and maintainability:
 
 ```plaintext
 AIDetectionImages/
+├── docs/                   # Documentation website files
+├── frontend/               # Frontend application
+│   └── app.py              # Streamlit-based frontend code
+├── ModelsForUse/           # Trained models and generated results
 ├── src/                    # Core Python modules
 │   ├── data.py             # Handles data loading and synthetic image generation
 │   ├── features.py         # Feature extraction methods (FFT, CLIP embeddings)
 │   ├── models.py           # Model training and evaluation
 │   ├── utils.py            # Utility functions (logging, configuration)
 │   └── main_pipeline.py    # Orchestrates the pipeline workflow
-├── frontend/               # Frontend application
-│   └── app.py              # Streamlit-based frontend code
-├── ModelsForUse/           # Trained models and generated results
 ├── README.md              # Project documentation
 
 ```
