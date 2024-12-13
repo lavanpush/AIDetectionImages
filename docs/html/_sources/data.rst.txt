@@ -1,0 +1,9 @@
+Data
+=====
+
+Generating and consolidating the data.
+
+.. automodule:: data
+   :members:
+   :undoc-members:
+   :show-inheritance:
