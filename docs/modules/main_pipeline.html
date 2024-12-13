@@ -1,0 +1,206 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>main_pipeline &mdash; Detecting Real vs AI Generated Images Dec 2024 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=dba8473a"></script>
+      <script src="../_static/doctools.js?v=888ff710"></script>
+      <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Detecting Real vs AI Generated Images
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../main_pipeline.html">Main Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../utils.html">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Detecting Real vs AI Generated Images</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">main_pipeline</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for main_pipeline</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="nn">transformers</span> <span class="kn">import</span> <span class="n">CLIPProcessor</span><span class="p">,</span> <span class="n">CLIPModel</span>
+<span class="kn">from</span> <span class="nn">utils</span> <span class="kn">import</span> <span class="n">setup_logging</span>
+<span class="kn">from</span> <span class="nn">data</span> <span class="kn">import</span> <span class="n">load_real_images</span><span class="p">,</span> <span class="n">generate_fake_images</span><span class="p">,</span> <span class="n">prepare_image_paths_labels</span>
+<span class="kn">from</span> <span class="nn">features</span> <span class="kn">import</span> <span class="n">prepare_combined_features</span>
+<span class="kn">from</span> <span class="nn">models</span> <span class="kn">import</span> <span class="n">train_and_save_models</span>
+
+
+<span class="c1"># -------------------------</span>
+<span class="c1"># Main Function</span>
+<span class="c1"># -------------------------</span>
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../main_pipeline.html#main_pipeline.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Main function to run the complete pipeline for image processing, feature extraction,</span>
+<span class="sd">        model training, and saving results.</span>
+
+<span class="sd">        This function orchestrates the following tasks:</span>
+<span class="sd">        1. Setup logging for monitoring the pipeline.</span>
+<span class="sd">        2. Load real images from a specified directory and preprocess them.</span>
+<span class="sd">        3. Generate fake images using a pre-trained Stable Diffusion model.</span>
+<span class="sd">        4. Prepare the dataset by combining real and fake image paths and labels.</span>
+<span class="sd">        5. Perform feature extraction using the CLIP model.</span>
+<span class="sd">        6. Save the extracted features and labels for reuse.</span>
+<span class="sd">        7. Split the dataset into training and testing sets.</span>
+<span class="sd">        8. Train models (SVM, XGBoost, Neural Network) with hyperparameter optimization using Optuna.</span>
+<span class="sd">        9. Save the trained models and evaluation metrics.</span>
+
+<span class="sd">        The final pipeline ensures that the models and metrics are stored in a specified output directory</span>
+<span class="sd">        for future use and evaluation.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            main()  # Runs the entire image processing and model training pipeline.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">setup_logging</span><span class="p">()</span>
+
+    <span class="c1"># Configuration</span>
+    <span class="n">data_dir</span> <span class="o">=</span> <span class="s1">&#39;extracted_imagenet10&#39;</span>
+    <span class="n">fake_images_dir</span> <span class="o">=</span> <span class="s1">&#39;generated_fake_images&#39;</span>
+    <span class="n">class_index_json</span> <span class="o">=</span> <span class="s1">&#39;in100_class_index.json&#39;</span>
+    <span class="n">output_model_dir</span> <span class="o">=</span> <span class="s1">&#39;ModelsForUse&#39;</span>
+    <span class="n">selected_classes</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;n02342885&#39;</span><span class="p">,</span> <span class="s1">&#39;n01882714&#39;</span><span class="p">,</span> <span class="s1">&#39;n02129604&#39;</span><span class="p">,</span> <span class="s1">&#39;n03627232&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;n02980441&#39;</span><span class="p">,</span> <span class="s1">&#39;n02007558&#39;</span><span class="p">,</span> <span class="s1">&#39;n03384352&#39;</span><span class="p">,</span> <span class="s1">&#39;n02279972&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;n03388043&#39;</span><span class="p">,</span> <span class="s1">&#39;n02391049&#39;</span>
+    <span class="p">]</span>
+    <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using device: </span><span class="si">{</span><span class="n">device</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Load Real Images</span>
+    <span class="n">real_dataset</span> <span class="o">=</span> <span class="n">load_real_images</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">selected_classes</span><span class="p">,</span> <span class="n">max_images_per_class</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Real dataset loaded with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">real_dataset</span><span class="p">)</span><span class="si">}</span><span class="s2"> images.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Generate Fake Images</span>
+    <span class="n">generate_fake_images</span><span class="p">(</span><span class="n">selected_classes</span><span class="p">,</span> <span class="n">class_index_json</span><span class="p">,</span> <span class="n">fake_images_dir</span><span class="p">,</span> <span class="n">max_images_per_class</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Fake images generated.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Check Dataset</span>
+    <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="n">selected_classes</span><span class="p">:</span>
+        <span class="n">class_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fake_images_dir</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">class_dir</span><span class="p">):</span>
+            <span class="n">fake_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">([</span><span class="n">img</span> <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">class_dir</span><span class="p">)</span> <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.png&quot;</span><span class="p">)])</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Class </span><span class="si">{</span><span class="bp">cls</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">fake_count</span><span class="si">}</span><span class="s2"> fake images.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Prepare Dataset</span>
+    <span class="n">paths_labels</span> <span class="o">=</span> <span class="n">prepare_image_paths_labels</span><span class="p">(</span><span class="n">real_dataset</span><span class="p">,</span> <span class="n">fake_images_dir</span><span class="p">,</span> <span class="n">selected_classes</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total images prepared (real + fake): </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">paths_labels</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Feature Extraction</span>
+    <span class="n">clip_processor</span> <span class="o">=</span> <span class="n">CLIPProcessor</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s2">&quot;openai/clip-vit-base-patch32&quot;</span><span class="p">)</span>
+    <span class="n">clip_model</span> <span class="o">=</span> <span class="n">CLIPModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s2">&quot;openai/clip-vit-base-patch32&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">prepare_combined_features</span><span class="p">(</span><span class="n">paths_labels</span><span class="p">,</span> <span class="n">clip_processor</span><span class="p">,</span> <span class="n">clip_model</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Features extracted: </span><span class="si">{</span><span class="n">features</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> samples, </span><span class="si">{</span><span class="n">features</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> features.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Save Features for Reuse</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_model_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_model_dir</span><span class="p">,</span> <span class="s2">&quot;features.npy&quot;</span><span class="p">),</span> <span class="n">features</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_model_dir</span><span class="p">,</span> <span class="s2">&quot;labels.npy&quot;</span><span class="p">),</span> <span class="n">labels</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Features and labels saved for reuse.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Train/Test Split</span>
+    <span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data split into training (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span><span class="si">}</span><span class="s2">) and testing (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span><span class="si">}</span><span class="s2">) samples.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Train and Save Models</span>
+    <span class="n">train_and_save_models</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">output_model_dir</span><span class="p">)</span>
+
+    <span class="c1"># Final Pipeline Summary</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Pipeline completed successfully.&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total images processed: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">paths_labels</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Features generated: </span><span class="si">{</span><span class="n">features</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">, Labels generated: </span><span class="si">{</span><span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Models and metrics saved in directory: </span><span class="si">{</span><span class="n">output_model_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, By: Nashrah Haque, Lavanya Pushparaj, &amp; Thien an Pham.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

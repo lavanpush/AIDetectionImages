@@ -1,0 +1,220 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data &mdash; Detecting Real vs AI Generated Images Dec 2024 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=dba8473a"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Features" href="features.html" />
+    <link rel="prev" title="Utils" href="utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Detecting Real vs AI Generated Images
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="main_pipeline.html">Main Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#data.generate_fake_images"><code class="docutils literal notranslate"><span class="pre">generate_fake_images()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#data.load_real_images"><code class="docutils literal notranslate"><span class="pre">load_real_images()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#data.prepare_image_paths_labels"><code class="docutils literal notranslate"><span class="pre">prepare_image_paths_labels()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Detecting Real vs AI Generated Images</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Data</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/data.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="data">
+<h1>Data<a class="headerlink" href="#data" title="Permalink to this heading"></a></h1>
+<p>Generating and consolidating the data.</p>
+<span class="target" id="module-data"></span><dl class="py function">
+<dt class="sig sig-object py" id="data.generate_fake_images">
+<span class="sig-prename descclassname"><span class="pre">data.</span></span><span class="sig-name descname"><span class="pre">generate_fake_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">selected_classes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">class_index_json</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_images_per_class</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cuda'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/data.html#generate_fake_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#data.generate_fake_images" title="Permalink to this definition"></a></dt>
+<dd><p>Generates fake images for selected classes using Stable Diffusion.</p>
+<p>This function uses the Stable Diffusion model to generate fake images for the specified classes. It takes
+class identifiers (WNID) from <cite>selected_classes</cite> and retrieves the corresponding class names from a JSON file
+(<cite>class_index_json</cite>). It generates images based on the class names and saves them to the <cite>output_dir</cite>.
+A maximum of <cite>max_images_per_class</cite> images are generated for each class. If images already exist for a class,
+it skips generating additional images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>selected_classes</strong> (<em>list</em><em> of </em><em>str</em>) – A list of class identifiers (WNIDs) for which fake images should be generated.</p></li>
+<li><p><strong>class_index_json</strong> (<em>str</em>) – Path to a JSON file that maps class indices to class names.</p></li>
+<li><p><strong>output_dir</strong> (<em>str</em>) – Directory where the generated images will be saved.</p></li>
+<li><p><strong>max_images_per_class</strong> (<em>int</em><em>, </em><em>optional</em>) – The maximum number of images to generate per class. Default is 1000.</p></li>
+<li><p><strong>device</strong> (<em>str</em><em>, </em><em>optional</em>) – The device on which the model should run (e.g., ‘cuda’ or ‘cpu’). Default is ‘cuda’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>selected_classes = [“n02096585”, “n02129604”]
+class_index_json = “path/to/class_index.json”
+output_dir = “path/to/output”
+generate_fake_images(selected_classes, class_index_json, output_dir)
+# Fake images for the selected classes are generated and saved in the output directory.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="data.load_real_images">
+<span class="sig-prename descclassname"><span class="pre">data.</span></span><span class="sig-name descname"><span class="pre">load_real_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_classes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_images_per_class</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/data.html#load_real_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#data.load_real_images" title="Permalink to this definition"></a></dt>
+<dd><p>Loads a subset of real images from a directory, filtering by selected classes and limiting the number of images per class.</p>
+<p>This function loads images from the specified directory, selecting only those belonging to the classes
+provided in <cite>selected_classes</cite>. It ensures that no more than <cite>max_images_per_class</cite> images are loaded
+per class. The images are preprocessed by resizing and centering them to 256x256 pixels and converting
+them to tensor format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data_dir</strong> (<em>str</em>) – The directory containing the image data organized into subfolders, where each subfolder
+corresponds to a class.</p></li>
+<li><p><strong>selected_classes</strong> (<em>list</em><em> of </em><em>str</em>) – A list of class names to filter the dataset by.</p></li>
+<li><p><strong>max_images_per_class</strong> (<em>int</em><em>, </em><em>optional</em>) – The maximum number of images to load per selected class. Default is 1000.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A subset of the <cite>ImageFolder</cite> dataset containing the filtered and preprocessed images.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.utils.data.Subset</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>data_dir = “path/to/imagenet”
+selected_classes = [“tiger”, “koala”, “hamster”]
+dataset = load_real_images(data_dir, selected_classes, max_images_per_class=500)
+print(len(dataset))  # Prints the number of images loaded.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="data.prepare_image_paths_labels">
+<span class="sig-prename descclassname"><span class="pre">data.</span></span><span class="sig-name descname"><span class="pre">prepare_image_paths_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">real_dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fake_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selected_classes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/data.html#prepare_image_paths_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#data.prepare_image_paths_labels" title="Permalink to this definition"></a></dt>
+<dd><p>Prepares a combined list of image paths and labels from real and fake datasets.</p>
+<p>This function creates a list of image paths and their corresponding labels for both real and fake images.
+For real images, the paths and labels are obtained from the <cite>real_dataset</cite>. For fake images, the paths
+are gathered from the specified <cite>fake_dir</cite> for each class in <cite>selected_classes</cite>. The real images are labeled as 0,
+and the fake images are labeled as 1. The function returns a combined list of tuples containing image paths
+and their associated labels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>real_dataset</strong> (<em>torch.utils.data.Subset</em>) – A subset of the real image dataset, typically with transformations applied.</p></li>
+<li><p><strong>fake_dir</strong> (<em>str</em>) – Directory where fake images are stored, organized by class.</p></li>
+<li><p><strong>selected_classes</strong> (<em>list</em><em> of </em><em>str</em>) – A list of selected classes for which fake images should be included.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A list of tuples, where each tuple contains:</dt><dd><ul class="simple">
+<li><p>str: The file path to an image.</p></li>
+<li><p>int: The label for the image (0 for real, 1 for fake).</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list of tuples</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>real_dataset = load_real_images(“path/to/real_images”, selected_classes=[“hamster”, “zebra”])
+fake_dir = “path/to/fake_images”
+selected_classes = [“hamster”, “zebra”]
+image_paths_labels = prepare_image_paths_labels(real_dataset, fake_dir, selected_classes)
+print(image_paths_labels)  # Prints the list of image paths with labels.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="utils.html" class="btn btn-neutral float-left" title="Utils" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="features.html" class="btn btn-neutral float-right" title="Features" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, By: Nashrah Haque, Lavanya Pushparaj, &amp; Thien an Pham.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
