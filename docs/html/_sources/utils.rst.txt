@@ -1,9 +1,0 @@
-Utils
-=======
-
-Setting up Utils.
-
-.. automodule:: utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
