@@ -1,0 +1,164 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Detecting Real vs AI Generated Images’ documentation! &mdash; Detecting Real vs AI Generated Images Dec 2024 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=dba8473a"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Main Pipeline" href="main_pipeline.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            Detecting Real vs AI Generated Images
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="main_pipeline.html">Main Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Detecting Real vs AI Generated Images</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Welcome to Detecting Real vs AI Generated Images’ documentation!</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="welcome-to-detecting-real-vs-ai-generated-images-documentation">
+<h1>Welcome to Detecting Real vs AI Generated Images’ documentation!<a class="headerlink" href="#welcome-to-detecting-real-vs-ai-generated-images-documentation" title="Permalink to this heading"></a></h1>
+<section id="purpose">
+<h2>Purpose:<a class="headerlink" href="#purpose" title="Permalink to this heading"></a></h2>
+<p>Creating a model to distinguish between AI-generated images and real images is crucial in addressing the growing concerns of authenticity, misinformation, and security in the digital age. As generative AI technology advances, it becomes increasingly challenging to differentiate synthetic content from genuine ones, posing risks in fields like journalism, social media, and forensics. Our approach combines the strengths of high-level semantic features from CLIP embeddings and low-level frequency information from Fourier Transform (FFT) embeddings, capturing both contextual and structural nuances. By feeding these comprehensive embeddings into SVM, Neural Networks, and XGBoost models, we developed a robust classification pipeline capable of accurately identifying real versus AI-generated images. This solution not only enhances detection capabilities but also contributes to fostering transparency and trust in AI-driven content.</p>
+</section>
+<section id="sample-streamlit-output">
+<h2>Sample Streamlit Output<a class="headerlink" href="#sample-streamlit-output" title="Permalink to this heading"></a></h2>
+<p>Identifying an AI generated image using our trained Neural Network.</p>
+<a class="reference internal image-reference" href="_images/AI_Image.png"><img alt="Detecting an AI generated image" class="align-center" src="_images/AI_Image.png" style="width: 500px;" /></a>
+<p>Identifying a real image using our trained XGBoost model.</p>
+<a class="reference internal image-reference" href="_images/Real_Image.png"><img alt="Detecting an AI generated image" class="align-center" src="_images/Real_Image.png" style="width: 500px;" /></a>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="main_pipeline.html">Main Pipeline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="main_pipeline.html#main_pipeline.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#utils.setup_logging"><code class="docutils literal notranslate"><span class="pre">setup_logging()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data.html#data.generate_fake_images"><code class="docutils literal notranslate"><span class="pre">generate_fake_images()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="data.html#data.load_real_images"><code class="docutils literal notranslate"><span class="pre">load_real_images()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="data.html#data.prepare_image_paths_labels"><code class="docutils literal notranslate"><span class="pre">prepare_image_paths_labels()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="features.html#features.extract_clip_embedding"><code class="docutils literal notranslate"><span class="pre">extract_clip_embedding()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#features.extract_fft_features"><code class="docutils literal notranslate"><span class="pre">extract_fft_features()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#features.normalize_array"><code class="docutils literal notranslate"><span class="pre">normalize_array()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#features.prepare_combined_features"><code class="docutils literal notranslate"><span class="pre">prepare_combined_features()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="models.html#models.AdvancedNeuralNetwork"><code class="docutils literal notranslate"><span class="pre">AdvancedNeuralNetwork</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#models.FusedDataset"><code class="docutils literal notranslate"><span class="pre">FusedDataset</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#models.evaluate_and_save_metrics"><code class="docutils literal notranslate"><span class="pre">evaluate_and_save_metrics()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#models.objective"><code class="docutils literal notranslate"><span class="pre">objective()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="models.html#models.train_and_save_models"><code class="docutils literal notranslate"><span class="pre">train_and_save_models()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this heading"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="main_pipeline.html" class="btn btn-neutral float-right" title="Main Pipeline" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, By: Nashrah Haque, Lavanya Pushparaj, &amp; Thien an Pham.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

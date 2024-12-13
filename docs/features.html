@@ -1,0 +1,245 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Features &mdash; Detecting Real vs AI Generated Images Dec 2024 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=dba8473a"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Models" href="models.html" />
+    <link rel="prev" title="Data" href="data.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Detecting Real vs AI Generated Images
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="main_pipeline.html">Main Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Data</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Features</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#features.extract_clip_embedding"><code class="docutils literal notranslate"><span class="pre">extract_clip_embedding()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#features.extract_fft_features"><code class="docutils literal notranslate"><span class="pre">extract_fft_features()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#features.normalize_array"><code class="docutils literal notranslate"><span class="pre">normalize_array()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#features.prepare_combined_features"><code class="docutils literal notranslate"><span class="pre">prepare_combined_features()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Detecting Real vs AI Generated Images</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Features</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/features.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="features">
+<h1>Features<a class="headerlink" href="#features" title="Permalink to this heading"></a></h1>
+<p>Extracting FFT and Clip Embeddings.</p>
+<span class="target" id="module-features"></span><dl class="py function">
+<dt class="sig sig-object py" id="features.extract_clip_embedding">
+<span class="sig-prename descclassname"><span class="pre">features.</span></span><span class="sig-name descname"><span class="pre">extract_clip_embedding</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_processor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/features.html#extract_clip_embedding"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#features.extract_clip_embedding" title="Permalink to this definition"></a></dt>
+<dd><p>Extracts CLIP (Contrastive Language-Image Pretraining) embeddings from an image.</p>
+<p>This function loads an image from the specified path, processes it using the given CLIP processor,
+and computes the corresponding image embedding using the CLIP model. The model is run in inference mode
+on the specified device (e.g., CPU or GPU). The output is a NumPy array representing the extracted embedding.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_path</strong> (<em>str</em>) – Path to the image file from which the embedding is to be extracted.</p></li>
+<li><p><strong>clip_processor</strong> (<em>transformers.CLIPProcessor</em>) – The CLIP processor used to preprocess the image.</p></li>
+<li><p><strong>clip_model</strong> (<em>transformers.CLIPModel</em>) – The pre-trained CLIP model used to extract image features.</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>) – The device (CPU or GPU) where the model will run.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A 1D NumPy array representing the CLIP image embedding. Returns None if an error occurs.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>clip_processor = CLIPProcessor.from_pretrained(“openai/clip-vit-base-patch32”)
+clip_model = CLIPModel.from_pretrained(“openai/clip-vit-base-patch32”)
+embedding = extract_clip_embedding(“image.jpg”, clip_processor, clip_model, device=”cuda”)
+print(embedding)  # Prints the CLIP embedding for the image.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="features.extract_fft_features">
+<span class="sig-prename descclassname"><span class="pre">features.</span></span><span class="sig-name descname"><span class="pre">extract_fft_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/features.html#extract_fft_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#features.extract_fft_features" title="Permalink to this definition"></a></dt>
+<dd><p>Extracts features from an image using Fast Fourier Transform (FFT).</p>
+<p>This function performs FFT on the input image to convert it from the spatial domain to the frequency domain.
+It then applies a circular mask to filter the low-frequency components and extracts the magnitude spectrum
+of the filtered result. The extracted features are normalized by subtracting the mean and dividing by the
+standard deviation (with a fallback to 1 if the standard deviation is zero).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>image</strong> (<em>ndarray</em>) – A 2D NumPy array representing the grayscale image to extract features from.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A 1D array of normalized FFT features extracted from the image. Returns None if an error occurs.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>image = np.random.rand(256, 256)  # Example image.
+features = extract_fft_features(image)
+print(features)  # Prints the normalized FFT features of the image.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="features.normalize_array">
+<span class="sig-prename descclassname"><span class="pre">features.</span></span><span class="sig-name descname"><span class="pre">normalize_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_size</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/features.html#normalize_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#features.normalize_array" title="Permalink to this definition"></a></dt>
+<dd><p>Normalizes the size of a 1D array to the specified target size.</p>
+<p>This function adjusts the size of the input array. If the array is longer than the target size,
+it is truncated. If it is shorter, it is padded with zeros at the end to match the target size.
+If the array is already of the target size, it is returned as is.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<em>numpy.ndarray</em>) – A 1D NumPy array to be normalized.</p></li>
+<li><p><strong>target_size</strong> (<em>int</em>) – The desired size of the array.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A 1D NumPy array with the size normalized to the target size.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>array = np.array([1, 2, 3, 4, 5])
+normalized_array = normalize_array(array, target_size=7)
+print(normalized_array)  # Output: [1 2 3 4 5 0 0]</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="features.prepare_combined_features">
+<span class="sig-prename descclassname"><span class="pre">features.</span></span><span class="sig-name descname"><span class="pre">prepare_combined_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">paths_labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_processor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/features.html#prepare_combined_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#features.prepare_combined_features" title="Permalink to this definition"></a></dt>
+<dd><p>Prepares combined features for a dataset of images using FFT and CLIP embeddings.</p>
+<p>This function processes a list of image paths and their corresponding labels. For each image:
+- It extracts FFT-based features by converting the image to grayscale and resizing it.
+- It extracts CLIP embeddings using a pre-trained CLIP model.
+- Both feature sets are concatenated into a single combined feature vector.</p>
+<p>Any image that fails to process (either due to missing or incorrect features) is logged, and a record of these failures is saved in a file.
+The function returns the combined feature vectors and labels for the entire dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>paths_labels</strong> (<em>list</em><em> of </em><em>tuples</em>) – A list of tuples, where each tuple contains:
+- path (str): The file path of the image.
+- label (int): The label corresponding to the image.</p></li>
+<li><p><strong>clip_processor</strong> (<em>transformers.CLIPProcessor</em>) – The CLIP processor used to preprocess the image.</p></li>
+<li><p><strong>clip_model</strong> (<em>transformers.CLIPModel</em>) – The pre-trained CLIP model used to extract image features.</p></li>
+<li><p><strong>device</strong> (<em>torch.device</em>) – The device (CPU or GPU) on which the CLIP model will run.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A tuple containing:</dt><dd><ul class="simple">
+<li><p>np.ndarray: A 2D array of combined feature vectors, where each row is a concatenated FFT and CLIP feature vector.</p></li>
+<li><p>np.ndarray: A 1D array of labels corresponding to the images.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p>paths_labels = [(“image1.jpg”, 0), (“image2.jpg”, 1)]
+clip_processor = CLIPProcessor.from_pretrained(“openai/clip-vit-base-patch32”)
+clip_model = CLIPModel.from_pretrained(“openai/clip-vit-base-patch32”)
+features, labels = prepare_combined_features(paths_labels, clip_processor, clip_model, device=”cuda”)
+print(features)  # Prints the combined features.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="data.html" class="btn btn-neutral float-left" title="Data" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="models.html" class="btn btn-neutral float-right" title="Models" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, By: Nashrah Haque, Lavanya Pushparaj, &amp; Thien an Pham.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
