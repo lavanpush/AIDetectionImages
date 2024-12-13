@@ -1,9 +1,0 @@
-Features
-=========
-
-Extracting FFT and Clip Embeddings.
-
-.. automodule:: features
-   :members:
-   :undoc-members:
-   :show-inheritance:
