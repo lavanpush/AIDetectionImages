@@ -1,8 +1,0 @@
-Main Pipeline
-==========================
-Follow this pipeline to run through the whole framework.
-
-.. automodule:: main_pipeline
-   :members:
-   :undoc-members:
-   :show-inheritance:
