@@ -1,0 +1,9 @@
+Models
+=======
+
+Training and testing SVM, Neural Net, and XGBoost on the extracted embeddings.
+
+.. automodule:: models
+   :members:
+   :undoc-members:
+   :show-inheritance:
