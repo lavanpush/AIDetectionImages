@@ -1,5 +1,7 @@
 # AI Detection of Generated Images
 
+By: Nashrah Haque, Lavanya Pushparaj, & Thien an Pham
+
 ## Project Overview
 
 The AI Detection of Generated Images project aims to detect AI-generated images by leveraging advanced feature extraction techniques and machine learning models. It integrates synthetic data generation, feature engineering, and model training in a modular structure.
