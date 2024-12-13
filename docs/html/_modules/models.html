@@ -1,0 +1,583 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>models &mdash; Detecting Real vs AI Generated Images Dec 2024 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=dba8473a"></script>
+      <script src="../_static/doctools.js?v=888ff710"></script>
+      <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Detecting Real vs AI Generated Images
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../main_pipeline.html">Main Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../utils.html">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Models</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Detecting Real vs AI Generated Images</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">models</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for models</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">classification_report</span><span class="p">,</span>
+    <span class="n">confusion_matrix</span><span class="p">,</span>
+    <span class="n">accuracy_score</span><span class="p">,</span>
+    <span class="n">roc_auc_score</span><span class="p">,</span>
+    <span class="n">precision_score</span><span class="p">,</span>
+    <span class="n">recall_score</span><span class="p">,</span>
+    <span class="n">f1_score</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">import</span> <span class="nn">xgboost</span> <span class="k">as</span> <span class="nn">xgb</span>
+<span class="kn">import</span> <span class="nn">optuna</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">torch.optim</span> <span class="k">as</span> <span class="nn">optim</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">DataLoader</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+
+
+<div class="viewcode-block" id="evaluate_and_save_metrics"><a class="viewcode-back" href="../models.html#models.evaluate_and_save_metrics">[docs]</a><span class="k">def</span> <span class="nf">evaluate_and_save_metrics</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">is_nn</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Evaluate the model on the test set and save evaluation metrics.</span>
+
+<span class="sd">    This function evaluates the given model on the provided test set (`X_test` and `y_test`) by calculating</span>
+<span class="sd">    various performance metrics including accuracy, precision, recall, F1 score, and AUROC. It also generates</span>
+<span class="sd">    a classification report. The metrics are saved as a JSON file in the specified output directory.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model (sklearn.base.BaseEstimator or torch.nn.Module): The trained model to be evaluated.</span>
+<span class="sd">        model_name (str): The name of the model, which will be used for saving the metrics.</span>
+<span class="sd">        X_test (numpy.ndarray or torch.Tensor): The feature matrix for the test set.</span>
+<span class="sd">        y_test (numpy.ndarray or torch.Tensor): The true labels for the test set.</span>
+<span class="sd">        output_dir (str): The directory where the evaluation metrics will be saved.</span>
+<span class="sd">        is_nn (bool, optional): A flag indicating if the model is a neural network. Defaults to False.</span>
+<span class="sd">        device (str, optional): The device (&#39;cpu&#39; or &#39;cuda&#39;) to use for inference with neural networks. Defaults to &#39;cpu&#39;.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        evaluate_and_save_metrics(model, &quot;MyModel&quot;, X_test, y_test, &quot;path/to/output&quot;)</span>
+<span class="sd">        # Evaluates the model and saves the metrics to the specified output directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Evaluating </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Predict probabilities and labels</span>
+    <span class="k">if</span> <span class="n">is_nn</span><span class="p">:</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="n">test_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">logits</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">test_tensor</span><span class="p">)</span>
+            <span class="n">probabilities</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;predict_proba&#39;</span><span class="p">):</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The model </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2"> does not have &#39;predict_proba&#39; method.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">probabilities</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+
+    <span class="n">predictions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">probabilities</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Compute metrics</span>
+    <span class="n">accuracy</span> <span class="o">=</span> <span class="n">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span>
+    <span class="n">precision</span> <span class="o">=</span> <span class="n">precision_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span>
+    <span class="n">recall</span> <span class="o">=</span> <span class="n">recall_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span>
+    <span class="n">f1</span> <span class="o">=</span> <span class="n">f1_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">auroc</span> <span class="o">=</span> <span class="n">roc_auc_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error calculating AUROC for </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">auroc</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="n">accuracy</span><span class="p">,</span>
+        <span class="s2">&quot;precision&quot;</span><span class="p">:</span> <span class="n">precision</span><span class="p">,</span>
+        <span class="s2">&quot;recall&quot;</span><span class="p">:</span> <span class="n">recall</span><span class="p">,</span>
+        <span class="s2">&quot;f1_score&quot;</span><span class="p">:</span> <span class="n">f1</span><span class="p">,</span>
+        <span class="s2">&quot;auroc&quot;</span><span class="p">:</span> <span class="n">auroc</span><span class="p">,</span>
+        <span class="s2">&quot;classification_report&quot;</span><span class="p">:</span> <span class="n">classification_report</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">predictions</span><span class="p">,</span> <span class="n">output_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="c1"># Save metrics as JSON</span>
+    <span class="n">metrics_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">_metrics.json&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">metrics_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Metrics for </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2"> saved to </span><span class="si">{</span><span class="n">metrics_path</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+<span class="c1"># -------------------------</span>
+<span class="c1"># Neural Network Definitions</span>
+<span class="c1"># -------------------------</span>
+<div class="viewcode-block" id="FusedDataset"><a class="viewcode-back" href="../models.html#models.FusedDataset">[docs]</a><span class="k">class</span> <span class="nc">FusedDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Custom Dataset for handling fused features and labels.</span>
+
+<span class="sd">    This class is used to create a PyTorch Dataset that combines features and labels, allowing for easy</span>
+<span class="sd">    handling and loading of the data during model training or evaluation. The dataset stores the input features</span>
+<span class="sd">    and labels as tensors, which are then accessed by indexing.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        features (numpy.ndarray or torch.Tensor): A 2D array or tensor containing the input features for each sample.</span>
+<span class="sd">        labels (numpy.ndarray or torch.Tensor): A 1D array or tensor containing the labels for each sample.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        X (torch.Tensor): A tensor containing the input features.</span>
+<span class="sd">        y (torch.Tensor): A tensor containing the labels.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        __len__(): Returns the number of samples in the dataset.</span>
+<span class="sd">        __getitem__(idx): Retrieves the feature and label pair for the sample at the specified index.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        features = np.random.rand(100, 10)  # 100 samples, 10 features each</span>
+<span class="sd">        labels = np.random.randint(0, 2, size=100)  # Binary labels for each sample</span>
+<span class="sd">        dataset = FusedDataset(features, labels)</span>
+<span class="sd">        print(len(dataset))  # Prints the number of samples in the dataset.</span>
+<span class="sd">        sample = dataset[0]  # Retrieves the first sample&#39;s features and label.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FusedDataset.__len__"><a class="viewcode-back" href="../models.html#models.FusedDataset.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="FusedDataset.__getitem__"><a class="viewcode-back" href="../models.html#models.FusedDataset.__getitem__">[docs]</a>    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span></div></div>
+
+<div class="viewcode-block" id="AdvancedNeuralNetwork"><a class="viewcode-back" href="../models.html#models.AdvancedNeuralNetwork">[docs]</a><span class="k">class</span> <span class="nc">AdvancedNeuralNetwork</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Defines an advanced neural network architecture with Batch Normalization and Dropout.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_size</span><span class="p">,</span> <span class="n">hidden_sizes</span><span class="p">,</span> <span class="n">num_classes</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">dropout_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Initializes the advanced neural network with specified architecture.</span>
+
+<span class="sd">            This constructor builds the neural network layers sequentially. For each hidden layer, it adds a</span>
+<span class="sd">            fully connected layer, followed by Batch Normalization, ReLU activation, and Dropout for regularization.</span>
+<span class="sd">            The final layer is a fully connected output layer with the specified number of classes.</span>
+
+<span class="sd">            Args:</span>
+<span class="sd">                input_size (int): The number of input features.</span>
+<span class="sd">                hidden_sizes (list of int): A list specifying the number of neurons in each hidden layer.</span>
+<span class="sd">                num_classes (int, optional): The number of output classes. Default is 2 (binary classification).</span>
+<span class="sd">                dropout_rate (float, optional): The dropout rate applied to each hidden layer. Default is 0.5.</span>
+
+<span class="sd">            Returns:</span>
+<span class="sd">                None</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AdvancedNeuralNetwork</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="n">layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">previous_size</span> <span class="o">=</span> <span class="n">input_size</span>
+        <span class="k">for</span> <span class="n">hidden_size</span> <span class="ow">in</span> <span class="n">hidden_sizes</span><span class="p">:</span>
+            <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">previous_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">))</span>
+            <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm1d</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">))</span>
+            <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">())</span>
+            <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="n">dropout_rate</span><span class="p">))</span>
+            <span class="n">previous_size</span> <span class="o">=</span> <span class="n">hidden_size</span>
+        <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">previous_size</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="n">layers</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AdvancedNeuralNetwork.forward"><a class="viewcode-back" href="../models.html#models.AdvancedNeuralNetwork.forward">[docs]</a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Defines the forward pass of the neural network.</span>
+
+<span class="sd">            This function passes the input `x` through the sequential layers of the network. The layers consist</span>
+<span class="sd">            of fully connected layers, Batch Normalization, ReLU activation, and Dropout (for regularization).</span>
+<span class="sd">            The final output is generated by the last fully connected layer.</span>
+
+<span class="sd">            Args:</span>
+<span class="sd">                x (torch.Tensor): The input tensor that will be passed through the network.</span>
+
+<span class="sd">            Returns:</span>
+<span class="sd">                torch.Tensor: The output of the neural network after passing through all layers.</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div></div>
+
+<span class="c1"># -------------------------</span>
+<span class="c1"># Objective Function for Optuna</span>
+<span class="c1"># -------------------------</span>
+<div class="viewcode-block" id="objective"><a class="viewcode-back" href="../models.html#models.objective">[docs]</a><span class="k">def</span> <span class="nf">objective</span><span class="p">(</span><span class="n">trial</span><span class="p">,</span> <span class="n">X_train</span><span class="p">,</span> <span class="n">X_valid</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_valid</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Objective function for Optuna to optimize neural network hyperparameters.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        trial (optuna.trial.Trial): Optuna trial object.</span>
+<span class="sd">        X_train (np.ndarray): Training features.</span>
+<span class="sd">        X_valid (np.ndarray): Validation features.</span>
+<span class="sd">        y_train (np.ndarray): Training labels.</span>
+<span class="sd">        y_valid (np.ndarray): Validation labels.</span>
+<span class="sd">        device (torch.device): Device to run the model on.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: Validation accuracy.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Hyperparameters to tune</span>
+    <span class="n">hidden_size1</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_int</span><span class="p">(</span><span class="s2">&quot;hidden_size1&quot;</span><span class="p">,</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">2048</span><span class="p">)</span>
+    <span class="n">hidden_size2</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_int</span><span class="p">(</span><span class="s2">&quot;hidden_size2&quot;</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">1024</span><span class="p">)</span>
+    <span class="n">hidden_size3</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_int</span><span class="p">(</span><span class="s2">&quot;hidden_size3&quot;</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">512</span><span class="p">)</span>
+    <span class="n">learning_rate</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_loguniform</span><span class="p">(</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">,</span> <span class="mf">1e-2</span><span class="p">)</span>
+    <span class="n">dropout_rate</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_uniform</span><span class="p">(</span><span class="s2">&quot;dropout_rate&quot;</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)</span>
+
+    <span class="n">hidden_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="n">hidden_size1</span><span class="p">,</span> <span class="n">hidden_size2</span><span class="p">,</span> <span class="n">hidden_size3</span><span class="p">]</span>
+
+    <span class="c1"># Define the model</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">AdvancedNeuralNetwork</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="n">X_train</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                  <span class="n">hidden_sizes</span><span class="o">=</span><span class="n">hidden_sizes</span><span class="p">,</span>
+                                  <span class="n">num_classes</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                                  <span class="n">dropout_rate</span><span class="o">=</span><span class="n">dropout_rate</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Define loss and optimizer</span>
+    <span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span><span class="p">()</span>
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+
+    <span class="c1"># Define number of epochs</span>
+    <span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># Reduced for faster optimization</span>
+    <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">128</span>
+
+    <span class="c1"># Prepare DataLoaders</span>
+    <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">FusedDataset</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    <span class="n">valid_dataset</span> <span class="o">=</span> <span class="n">FusedDataset</span><span class="p">(</span><span class="n">X_valid</span><span class="p">,</span> <span class="n">y_valid</span><span class="p">)</span>
+
+    <span class="n">train_loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">valid_loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">valid_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># Training loop</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_epochs</span><span class="p">):</span>
+        <span class="n">running_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">batch_features</span><span class="p">,</span> <span class="n">batch_labels</span> <span class="ow">in</span> <span class="n">train_loader</span><span class="p">:</span>
+            <span class="n">batch_features</span> <span class="o">=</span> <span class="n">batch_features</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">batch_labels</span> <span class="o">=</span> <span class="n">batch_labels</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+            <span class="c1"># Forward pass</span>
+            <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">batch_features</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">batch_labels</span><span class="p">)</span>
+
+            <span class="c1"># Backward and optimize</span>
+            <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+            <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+            <span class="n">running_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">*</span> <span class="n">batch_features</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">epoch_loss</span> <span class="o">=</span> <span class="n">running_loss</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_loader</span><span class="o">.</span><span class="n">dataset</span><span class="p">)</span>
+        <span class="c1"># Optionally, log training loss</span>
+        <span class="c1"># logging.info(f&quot;Trial {trial.number}, Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}&quot;)</span>
+
+        <span class="c1"># Validation</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+        <span class="n">correct</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">batch_features</span><span class="p">,</span> <span class="n">batch_labels</span> <span class="ow">in</span> <span class="n">valid_loader</span><span class="p">:</span>
+                <span class="n">batch_features</span> <span class="o">=</span> <span class="n">batch_features</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+                <span class="n">batch_labels</span> <span class="o">=</span> <span class="n">batch_labels</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+                <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">batch_features</span><span class="p">)</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">predicted</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">outputs</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="n">total</span> <span class="o">+=</span> <span class="n">batch_labels</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">correct</span> <span class="o">+=</span> <span class="p">(</span><span class="n">predicted</span> <span class="o">==</span> <span class="n">batch_labels</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="n">accuracy</span> <span class="o">=</span> <span class="n">correct</span> <span class="o">/</span> <span class="n">total</span>
+        <span class="n">trial</span><span class="o">.</span><span class="n">report</span><span class="p">(</span><span class="n">accuracy</span><span class="p">,</span> <span class="n">epoch</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+
+        <span class="c1"># Handle pruning based on the intermediate value</span>
+        <span class="k">if</span> <span class="n">trial</span><span class="o">.</span><span class="n">should_prune</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="n">optuna</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">TrialPruned</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">accuracy</span></div>
+
+<span class="c1"># -------------------------</span>
+<span class="c1"># Model Training</span>
+<span class="c1"># -------------------------</span>
+<div class="viewcode-block" id="train_and_save_models"><a class="viewcode-back" href="../models.html#models.train_and_save_models">[docs]</a><span class="k">def</span> <span class="nf">train_and_save_models</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Trains and saves models using SVM, XGBoost, and a Neural Network, with hyperparameter optimization using Optuna.</span>
+
+<span class="sd">        This function standardizes the training data, trains three different machine learning models (SVM, XGBoost, and Neural Network)</span>
+<span class="sd">        using hyperparameter optimization with Optuna, and saves the models and evaluation metrics.</span>
+<span class="sd">        For each model, the best hyperparameters are determined via Optuna, the model is trained on the training data,</span>
+<span class="sd">        and performance metrics are computed and saved.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X_train (numpy.ndarray): The feature matrix for the training set.</span>
+<span class="sd">            X_test (numpy.ndarray): The feature matrix for the test set.</span>
+<span class="sd">            y_train (numpy.ndarray): The true labels for the training set.</span>
+<span class="sd">            y_test (numpy.ndarray): The true labels for the test set.</span>
+<span class="sd">            output_dir (str): Directory where models, metrics, and other outputs will be saved.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)</span>
+<span class="sd">            train_and_save_models(X_train, X_test, y_train, y_test, &quot;path/to/output&quot;)</span>
+<span class="sd">            # Trains the models and saves the results to the output directory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Standardize features using a scaler</span>
+    <span class="n">scaler</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+    <span class="n">X_train</span> <span class="o">=</span> <span class="n">scaler</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+    <span class="n">X_test</span> <span class="o">=</span> <span class="n">scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+
+    <span class="c1"># Save the scaler for inference</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="s1">&#39;scaler.pkl&#39;</span><span class="p">),</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">scaler</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Scaler saved successfully.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># -------------------------</span>
+    <span class="c1"># SVM Training with Optuna</span>
+    <span class="c1"># -------------------------</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Training SVM model with Optuna...&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">svm_objective</span><span class="p">(</span><span class="n">trial</span><span class="p">):</span>
+        <span class="n">param</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;C&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_loguniform</span><span class="p">(</span><span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">),</span>
+            <span class="s1">&#39;kernel&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_categorical</span><span class="p">(</span><span class="s1">&#39;kernel&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="s1">&#39;rbf&#39;</span><span class="p">]),</span>
+            <span class="s1">&#39;gamma&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_categorical</span><span class="p">(</span><span class="s1">&#39;gamma&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;scale&#39;</span><span class="p">,</span> <span class="s1">&#39;auto&#39;</span><span class="p">]),</span>
+            <span class="s1">&#39;probability&#39;</span><span class="p">:</span> <span class="kc">True</span>  <span class="c1"># Ensure probability=True</span>
+        <span class="p">}</span>
+        <span class="n">svm</span> <span class="o">=</span> <span class="n">SVC</span><span class="p">(</span><span class="o">**</span><span class="n">param</span><span class="p">)</span>
+        <span class="n">svm</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">svm</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">))</span>
+
+    <span class="n">svm_study</span> <span class="o">=</span> <span class="n">optuna</span><span class="o">.</span><span class="n">create_study</span><span class="p">(</span><span class="n">direction</span><span class="o">=</span><span class="s2">&quot;maximize&quot;</span><span class="p">)</span>
+    <span class="n">svm_study</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">svm_objective</span><span class="p">,</span> <span class="n">n_trials</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+    <span class="c1"># Retrieve the best hyperparameters</span>
+    <span class="n">best_params</span> <span class="o">=</span> <span class="n">svm_study</span><span class="o">.</span><span class="n">best_params</span>
+    <span class="c1"># Ensure &#39;probability&#39; is included</span>
+    <span class="n">best_params</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;probability&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
+
+    <span class="n">best_svm</span> <span class="o">=</span> <span class="n">SVC</span><span class="p">(</span><span class="o">**</span><span class="n">best_params</span><span class="p">)</span>
+    <span class="n">best_svm</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+    <span class="c1"># Save SVM model</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="s1">&#39;svm_model.pkl&#39;</span><span class="p">),</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">best_svm</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;SVM model saved.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Evaluate SVM and save metrics</span>
+    <span class="n">evaluate_and_save_metrics</span><span class="p">(</span><span class="n">best_svm</span><span class="p">,</span> <span class="s2">&quot;SVM&quot;</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+
+    <span class="c1"># -------------------------</span>
+    <span class="c1"># XGBoost Training with Optuna</span>
+    <span class="c1"># -------------------------</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Training XGBoost model with Optuna...&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">xgb_objective</span><span class="p">(</span><span class="n">trial</span><span class="p">):</span>
+        <span class="n">param</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;lambda&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_loguniform</span><span class="p">(</span><span class="s1">&#39;lambda&#39;</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">),</span>
+            <span class="s1">&#39;alpha&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_loguniform</span><span class="p">(</span><span class="s1">&#39;alpha&#39;</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">),</span>
+            <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_loguniform</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">),</span>
+            <span class="s1">&#39;n_estimators&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_int</span><span class="p">(</span><span class="s1">&#39;n_estimators&#39;</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">500</span><span class="p">),</span>
+            <span class="s1">&#39;max_depth&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_int</span><span class="p">(</span><span class="s1">&#39;max_depth&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+            <span class="s1">&#39;colsample_bytree&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_uniform</span><span class="p">(</span><span class="s1">&#39;colsample_bytree&#39;</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+            <span class="s1">&#39;subsample&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_uniform</span><span class="p">(</span><span class="s1">&#39;subsample&#39;</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+            <span class="s1">&#39;objective&#39;</span><span class="p">:</span> <span class="s1">&#39;binary:logistic&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;eval_metric&#39;</span><span class="p">:</span> <span class="s1">&#39;logloss&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;use_label_encoder&#39;</span><span class="p">:</span> <span class="kc">False</span>
+        <span class="p">}</span>
+        <span class="n">xgb_model</span> <span class="o">=</span> <span class="n">xgb</span><span class="o">.</span><span class="n">XGBClassifier</span><span class="p">(</span><span class="o">**</span><span class="n">param</span><span class="p">)</span>
+        <span class="n">xgb_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">xgb_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">))</span>
+
+    <span class="n">xgb_study</span> <span class="o">=</span> <span class="n">optuna</span><span class="o">.</span><span class="n">create_study</span><span class="p">(</span><span class="n">direction</span><span class="o">=</span><span class="s2">&quot;maximize&quot;</span><span class="p">)</span>
+    <span class="n">xgb_study</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">xgb_objective</span><span class="p">,</span> <span class="n">n_trials</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+    <span class="c1"># Retrieve the best hyperparameters</span>
+    <span class="n">best_params</span> <span class="o">=</span> <span class="n">xgb_study</span><span class="o">.</span><span class="n">best_params</span>
+    <span class="c1"># Include fixed parameters</span>
+    <span class="n">best_params</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+        <span class="s1">&#39;objective&#39;</span><span class="p">:</span> <span class="s1">&#39;binary:logistic&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;eval_metric&#39;</span><span class="p">:</span> <span class="s1">&#39;logloss&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;use_label_encoder&#39;</span><span class="p">:</span> <span class="kc">False</span>
+    <span class="p">})</span>
+
+    <span class="n">best_xgb</span> <span class="o">=</span> <span class="n">xgb</span><span class="o">.</span><span class="n">XGBClassifier</span><span class="p">(</span><span class="o">**</span><span class="n">best_params</span><span class="p">)</span>
+    <span class="n">best_xgb</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+    <span class="c1"># Save XGBoost model</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="s1">&#39;xgb_model.pkl&#39;</span><span class="p">),</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">best_xgb</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;XGBoost model saved.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Evaluate XGBoost and save metrics</span>
+    <span class="n">evaluate_and_save_metrics</span><span class="p">(</span><span class="n">best_xgb</span><span class="p">,</span> <span class="s2">&quot;XGBoost&quot;</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+
+    <span class="c1"># -------------------------</span>
+    <span class="c1"># Neural Network Training with Optuna</span>
+    <span class="c1"># -------------------------</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Training Neural Network with Optuna...&quot;</span><span class="p">)</span>
+
+    <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cuda&#39;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Split training data into training and validation for hyperparameter tuning</span>
+    <span class="n">X_train_tune</span><span class="p">,</span> <span class="n">X_valid</span><span class="p">,</span> <span class="n">y_train_tune</span><span class="p">,</span> <span class="n">y_valid</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+        <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">y_train</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Define the objective function for Optuna</span>
+    <span class="k">def</span> <span class="nf">objective_optuna</span><span class="p">(</span><span class="n">trial</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">objective</span><span class="p">(</span><span class="n">trial</span><span class="p">,</span> <span class="n">X_train_tune</span><span class="p">,</span> <span class="n">X_valid</span><span class="p">,</span> <span class="n">y_train_tune</span><span class="p">,</span> <span class="n">y_valid</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Create a study and optimize</span>
+    <span class="n">study</span> <span class="o">=</span> <span class="n">optuna</span><span class="o">.</span><span class="n">create_study</span><span class="p">(</span><span class="n">direction</span><span class="o">=</span><span class="s2">&quot;maximize&quot;</span><span class="p">)</span>
+    <span class="n">study</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">objective_optuna</span><span class="p">,</span> <span class="n">n_trials</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Best trial:&quot;</span><span class="p">)</span>
+    <span class="n">trial</span> <span class="o">=</span> <span class="n">study</span><span class="o">.</span><span class="n">best_trial</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Value: </span><span class="si">{</span><span class="n">trial</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Params: &quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">trial</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Train the final model with the best hyperparameters on the full training data</span>
+    <span class="n">hidden_sizes</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">trial</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;hidden_size1&quot;</span><span class="p">],</span>
+        <span class="n">trial</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;hidden_size2&quot;</span><span class="p">],</span>
+        <span class="n">trial</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;hidden_size3&quot;</span><span class="p">],</span>
+    <span class="p">]</span>
+    <span class="n">learning_rate</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span>
+    <span class="n">dropout_rate</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;dropout_rate&quot;</span><span class="p">]</span>
+
+    <span class="c1"># Define the final model</span>
+    <span class="n">final_model</span> <span class="o">=</span> <span class="n">AdvancedNeuralNetwork</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="n">X_train</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                                        <span class="n">hidden_sizes</span><span class="o">=</span><span class="n">hidden_sizes</span><span class="p">,</span>
+                                        <span class="n">num_classes</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                                        <span class="n">dropout_rate</span><span class="o">=</span><span class="n">dropout_rate</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Define loss and optimizer</span>
+    <span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span><span class="p">()</span>
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">final_model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+
+    <span class="c1"># Training loop</span>
+    <span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">128</span>
+    <span class="n">final_model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_epochs</span><span class="p">):</span>
+        <span class="n">running_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">batch_features</span><span class="p">,</span> <span class="n">batch_labels</span> <span class="ow">in</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">FusedDataset</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="n">batch_features</span> <span class="o">=</span> <span class="n">batch_features</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">batch_labels</span> <span class="o">=</span> <span class="n">batch_labels</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+            <span class="c1"># Forward pass</span>
+            <span class="n">outputs</span> <span class="o">=</span> <span class="n">final_model</span><span class="p">(</span><span class="n">batch_features</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">batch_labels</span><span class="p">)</span>
+
+            <span class="c1"># Backward and optimize</span>
+            <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+            <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+            <span class="n">running_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">*</span> <span class="n">batch_features</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">epoch_loss</span> <span class="o">=</span> <span class="n">running_loss</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Neural Network Epoch [</span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">num_epochs</span><span class="si">}</span><span class="s2">], Loss: </span><span class="si">{</span><span class="n">epoch_loss</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Neural Network training complete.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Save Neural Network model</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">final_model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="s1">&#39;neural_network.pt&#39;</span><span class="p">))</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Neural Network model saved.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Evaluate Neural Network and save metrics</span>
+    <span class="n">evaluate_and_save_metrics</span><span class="p">(</span><span class="n">final_model</span><span class="p">,</span> <span class="s2">&quot;NeuralNetwork&quot;</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">is_nn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Optionally, save the Optuna study</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="s1">&#39;nn_optuna_study.pkl&#39;</span><span class="p">),</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">study</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Optuna study saved.&quot;</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, By: Nashrah Haque, Lavanya Pushparaj, &amp; Thien an Pham.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
