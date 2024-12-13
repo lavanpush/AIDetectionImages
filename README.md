@@ -9,7 +9,7 @@ The AI Detection of Generated Images project aims to detect AI-generated images 
 
 ##  Code Documentation
 
-For code details, check out the [official documentation](https://lavanpush.github.io/Image-Detection/).
+For code details, check out the [official documentation](https://lavanpush.github.io/AIDetectionImages/).
 
 ## Directory Structure
 
