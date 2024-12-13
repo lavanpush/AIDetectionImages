@@ -24,9 +24,9 @@ AIDetectionImages/
 ├── src/                    # Core Python modules
 │   ├── data.py             # Handles data loading and synthetic image generation
 │   ├── features.py         # Feature extraction methods (FFT, CLIP embeddings)
+│   ├── main_pipeline.py    # Orchestrates the pipeline workflow
 │   ├── models.py           # Model training and evaluation
-│   ├── utils.py            # Utility functions (logging, configuration)
-│   └── main_pipeline.py    # Orchestrates the pipeline workflow
+│   └── utils.py            # Utility functions (logging, configuration)
 ├── README.md              # Project documentation
 
 ```
