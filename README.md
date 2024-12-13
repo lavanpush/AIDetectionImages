@@ -4,7 +4,6 @@
 
 The AI Detection of Generated Images project aims to detect AI-generated images by leveraging advanced feature extraction techniques and machine learning models. It integrates synthetic data generation, feature engineering, and model training in a modular structure.
 
----
 
 ##  Code Documentation
 
@@ -28,7 +27,6 @@ AIDetectionImages/
 ├── README.md              # Project documentation
 
 ```
----
 
 ## Features
 
@@ -53,7 +51,6 @@ AIDetectionImages/
 ### Frontend Application:
 - A Streamlit-based app for visualizing results and interacting with models.
 
----
 
 ## Install Dependencies
 
