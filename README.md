@@ -16,16 +16,6 @@ The project is structured for clarity, scalability, and maintainability:
 ```plaintext
 AIDetectionImages/
 ├── docs/                   # Documentation website files
-│   └──_images
-│     ├── AI_Image.png
-│     └── Real_Image.png
-│   └──_modules
-│     ├── data.html
-│     ├── features.html
-│     ├── index.html
-│     ├── main_pipeline.html
-│     ├── models.html
-│     └── utils.html
 ├── frontend/               # Frontend application
 │   └── app.py              # Streamlit-based frontend code
 ├── ModelsForUse/           # Trained models and generated results
