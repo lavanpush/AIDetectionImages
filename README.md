@@ -27,7 +27,7 @@ AIDetectionImages/
 │   ├── main_pipeline.py    # Orchestrates the pipeline workflow
 │   ├── models.py           # Model training and evaluation
 │   └── utils.py            # Utility functions (logging, configuration)
-├── README.md              # Project documentation
+├── README.md               # Project documentation
 
 ```
 
